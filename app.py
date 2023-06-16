@@ -1,15 +1,12 @@
-from flask import Flask
-from flask import render_template, request, redirect
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin, LoginManager, login_user, logout_user, login_required
-
-from werkzeug.security import generate_password_hash, check_password_hash
 import os
-
-
 from datetime import datetime
-import pytz
 
+import pytz
+from flask import Flask, redirect, render_template, request
+from flask_login import (LoginManager, UserMixin, login_required, login_user,
+                         logout_user)
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import check_password_hash, generate_password_hash
 
 # create the app
 app = Flask(__name__)
@@ -40,12 +37,13 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(12), nullable=False)
 
 @login_manager.user_loader
-def login_user(user_id):
+def user_loader(user_id):
     if isinstance(user_id, str) and user_id.isdigit():
         return User.query.get(int(user_id))
     else:
         return None
     # return User.query.get(int(user_id))
+
 
 
 # 初期画面の表示機能
@@ -65,13 +63,15 @@ def signup():
     if request.method == 'POST':
         # フォームから送信されたデータを取得
         username = request.form.get('username')
-        password = request.form.get('password')
+        password = request.form.get('password') #取得自体はできている
 
-        # パスワードがNoneでないことを確認する
-        if password is None:
-            return 'パスワードが提供されていません'
+        # パスワードが入力されていなかったらエラーメッセージを表示
+        if password == '':
+            return "Invalid password-password is empty-"
         # データベースに保存するデータを作成
-        user = User(username=username, password=generate_password_hash(password, method='sha256'))
+        user = User(username=username, password=generate_password_hash(password, method='sha256'))# userにはusernameとpasswordが入っていることを確認済み
+        print(user.password)
+
         # データベースに保存
         db.session.add(user)
         db.session.commit()
@@ -90,7 +90,11 @@ def login():
         password = request.form.get('password')
         # ユーザーの名前を合致させる
         user = User.query.filter_by(username=username).first()
+
+        print(check_password_hash(user.password, password))
+        
         if check_password_hash(user.password, password):
+            # login_user(user)
             login_user(user)
             # ログイン情報が正しければログインしてトップページにリダイレクト
             return redirect('/')
